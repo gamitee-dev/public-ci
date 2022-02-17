@@ -1,0 +1,31 @@
+name: Joyned Commit Linter
+
+on:
+  workflow_call:
+
+permissions:
+  pull-requests: write
+
+jobs:
+  lint-commits:
+    name: Lint Commits
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Download code
+        run: |
+          wget https://raw.githubusercontent.com/gamitee-dev/public-ci/master/code/commit_linter.py
+      - name: Get Commits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Getting PR details"
+          gh pr view https://github.com/${{ github.event.repository.full_name }}/pull/${{ github.event.number }} --json commits,title,baseRefName,headRefName,url > commit_details.json
+          cat commit_details.json | python commit_linter.py

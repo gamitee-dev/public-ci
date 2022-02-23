@@ -94,6 +94,7 @@ class CommitLinter:
         if not all(
             author.email.lower().endswith("@joyned.co")
             or author.email.lower().endswith("@gamitee.com")
+            or author.login == "gamitee-bot"
             for author in commit.authors
         ):
             raise RuntimeError("Author has non Joyned email address.")

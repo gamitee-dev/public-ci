@@ -1,0 +1,23 @@
+[MESSAGES CONTROL]
+disable=
+  broad-except,
+  duplicate-code,
+  invalid-name,
+  missing-class-docstring,
+  missing-function-docstring,
+  missing-module-docstring,
+  too-few-public-methods,
+  too-many-arguments,
+  too-many-instance-attributes,
+  too-many-locals,
+  too-many-public-methods,
+  too-many-return-statements
+
+[REPORTS]
+reports=no
+
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+max-statements=50

@@ -1,0 +1,11 @@
+/.vscode
+node_modules
+venv3
+/.deploy_package
+/.deploy_package.zip
+.dist
+__pycache__/
+.mypy_cache/
+test-reports/
+.coverage
+playground/

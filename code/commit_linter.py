@@ -111,7 +111,8 @@ class CommitLinter:
 
         if not title_match:
             raise RuntimeError(
-                "Pull request title must start with a title and a period after the message."
+                "Pull request title must start with a subject and a period after the message. "
+                "(in the same format as commit subjects)."
             )
 
         if len(title) > MAX_COMMIT_CHARS:

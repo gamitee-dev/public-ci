@@ -27,5 +27,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Getting PR details"
+          pip freeze
           gh pr view https://github.com/${{ github.event.repository.full_name }}/pull/${{ github.event.number }} --json commits,title,baseRefName,headRefName,url > commit_details.json
           cat commit_details.json | python commit_linter.py

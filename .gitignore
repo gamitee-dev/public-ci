@@ -9,3 +9,4 @@ __pycache__/
 test-reports/
 .coverage
 playground/
+commit_details.json

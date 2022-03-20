@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from sys import exit, stdin
 from typing import Any, Dict, List
 import json
 import re
+import sys
 
 MAX_COMMIT_CHARS = 72
 SUBJECT_REGEX = re.compile(r"^\S[\S ]*\S: \S[\S ]*\S\.$")
@@ -105,6 +105,24 @@ class CommitLinter:
 
         return None
 
+    @classmethod
+    def lint_title(cls, title: str) -> None:
+        title_match = SUBJECT_REGEX.match(title)
+
+        if not title_match:
+            raise RuntimeError(
+                "Pull request title must start with a title and a period after the message."
+            )
+
+        if len(title) > MAX_COMMIT_CHARS:
+            raise RuntimeError(
+                "Pull request title is longer than maximum length of "
+                f"{MAX_COMMIT_CHARS} characters."
+            )
+
+        if not cls._is_only_ascii_character(title):
+            raise RuntimeError("Pull request title has non-ASCII characters.")
+
     @staticmethod
     def _is_ignore_commit(commit: Commit) -> bool:
         ignored_subject_regexes = [
@@ -179,12 +197,15 @@ def main(raw_data: Dict[str, Any]) -> None:
 
     print("Commits are valid", flush=True)
 
+    CommitLinter.lint_title(pull_request.title)
+    print("Pull request is valid", flush=True)
+
 
 if __name__ == "__main__":
-    raw_data_json = json.loads(stdin.buffer.read())
+    raw_data_json = json.loads(sys.stdin.buffer.read())
     try:
         main(raw_data_json)
     except RuntimeError as error:
         print(f"!! {error.args[0]}", flush=True)
         print("Linting failed", flush=True)
-        exit(1)
+        sys.exit(1)

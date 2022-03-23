@@ -2,6 +2,12 @@ name: Joyned Commit Linter
 
 on:
   workflow_call:
+    inputs:
+      onlyMaster:
+        required: false
+        default: false
+        type: boolean
+        description: Is only the master branch used, hence allow PRs that are not releases into master.
 
 permissions:
   pull-requests: write
@@ -29,4 +35,4 @@ jobs:
         run: |
           echo "Getting PR details"
           gh pr view https://github.com/${{ github.event.repository.full_name }}/pull/${{ github.event.number }} --json commits,title,baseRefName,headRefName,url,body > commit_details.json
-          cat commit_details.json | python commit_linter.py --token $GITHUB_TOKEN
+          cat commit_details.json | python commit_linter.py --token $GITHUB_TOKEN ${{ inputs.onlyMaster && '--only_master' || '' }}

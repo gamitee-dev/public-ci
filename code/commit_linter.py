@@ -335,14 +335,14 @@ def validate_linked_issues(pull_request: PullRequest, github_client: GithubClien
         print(f"VALID: {issue.display()}", flush=True)
 
 
-def main(raw_data: Dict[str, Any], github_token: str) -> None:
+def main(raw_data: Dict[str, Any], github_token: str, only_master: bool) -> None:
     pull_request = PullRequest.parse(raw_data)
     print(f"Validating PR {pull_request.url}", flush=True)
     if pull_request.is_dependabot_pr():
         print("Dependabot PR, not checking commits", flush=True)
         return
 
-    if pull_request.validate_release_pr():
+    if not only_master and pull_request.validate_release_pr():
         print("This is a release PR, not checking commits", flush=True)
         if not pull_request.title.startswith("Release: "):
             raise RuntimeError("Release pull request must start with 'Release: '")
@@ -368,6 +368,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--token", help="The token to access github", required=True)
     parser.add_argument(
+        "--only_master",
+        help="Does this repository operate with only the master branch",
+        action="store_true",
+    )
+    parser.add_argument(
         "input_file",
         nargs="?",
         help="The file from github CLI with details of the PR",
@@ -379,7 +384,7 @@ if __name__ == "__main__":
     raw_data_json = json.loads(args.input_file.buffer.read())
 
     try:
-        main(raw_data_json, args.token)
+        main(raw_data_json, args.token, args.only_master)
     except RuntimeError as run_error:
         print(f"!! {run_error.args[0]}", flush=True)
         print("Linting failed", flush=True)

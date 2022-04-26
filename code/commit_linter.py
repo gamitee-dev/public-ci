@@ -31,6 +31,7 @@ LINKED_ISSUES_REGEX = re.compile(
 PULL_REQUEST_URL_PATTERN = re.compile(
     r"https\:\/\/github\.com\/(?P<owner>[\w-]+)\/(?P<repo>[\w-]+)\/pull\/\d+$"
 )
+BACKMERGE_PR_TITLE_PATTERN = re.compile(r"^Release: .* backmerge\.$")
 
 # https://dev.to/bowmanjd/http-calls-in-python-without-requests-or-other-external-dependencies-5aj1
 @dataclass
@@ -346,6 +347,19 @@ def main(raw_data: Dict[str, Any], github_token: str, only_master: bool) -> None
         print("This is a release PR, not checking commits", flush=True)
         if not pull_request.title.startswith("Release: "):
             raise RuntimeError("Release pull request must start with 'Release: '")
+
+        return
+
+    if (
+        not only_master
+        and raw_data["baseRefName"] == "develop"
+        and raw_data["headRefName"] == "master"
+    ):
+        print("This is a backmerge PR, not checking commits", flush=True)
+        if not BACKMERGE_PR_TITLE_PATTERN.match(pull_request.title):
+            raise RuntimeError(
+                f"Backmerge pull request must match {BACKMERGE_PR_TITLE_PATTERN.pattern}"
+            )
 
         return
 

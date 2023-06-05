@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 
 MAX_COMMIT_CHARS = 72
-SUBJECT_REGEX = re.compile(r"^\S[\S ]*\S: \S[\S ]*\S\.$")
+SUBJECT_REGEX = re.compile(r"^[\S].*[\S]: [\S].*[\S]$")
 # URL regex taken from
 # https://stackoverflow.com/questions/7160737/python-how-to-validate-a-url-in-python-malformed-or-not
 URL_REGEX = re.compile(
@@ -253,8 +253,8 @@ class CommitLinter:
 
         if not title_match:
             raise RuntimeError(
-                "Pull request title must start with a subject and a period after the message. "
-                "(in the same format as commit subjects)."
+                "Pull request title must be of the format 'Subject: A short title' "
+                "(same as commits)."
             )
 
         if len(title) > MAX_COMMIT_CHARS:
@@ -283,11 +283,14 @@ class CommitLinter:
     def _validate_subject(cls, subject: str) -> None:
         subject_match = SUBJECT_REGEX.match(subject)
         if not subject_match:
-            raise RuntimeError("Subject must start with a subject and a period after the message.")
+            raise RuntimeError(
+                "Commit title must be of the format 'Subject: A short title' "
+                "(same as pull requests)."
+            )
 
         if len(subject) > MAX_COMMIT_CHARS:
             raise RuntimeError(
-                f"Subject is longer than maximum length of {MAX_COMMIT_CHARS} characters."
+                f"Commit title is longer than maximum length of {MAX_COMMIT_CHARS} characters."
             )
 
         if not cls._is_only_ascii_character(subject):

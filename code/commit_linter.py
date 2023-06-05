@@ -236,9 +236,10 @@ class CommitLinter:
             author.email.lower().endswith("@joyned.co")
             or author.email.lower().endswith("@gamitee.com")
             or author.login == "gamitee-bot"
+            or author.login == "tomerle"
             for author in commit.authors
         ):
-            raise RuntimeError("Author has non Joyned email address.")
+            raise RuntimeError("Author has non Joyned email address, and is not tomerle. ;)")
 
         cls._validate_subject(commit.subject)
 

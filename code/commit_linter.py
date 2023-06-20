@@ -22,6 +22,7 @@ URL_REGEX = re.compile(
     re.IGNORECASE,
 )
 LINKED_ISSUES_REGEX = re.compile(
+    r"(?:(?:close|resolve)[sd]?|fix|fixe[sd]|for)\s+"
     r"(?:(?:(?P<owner1>[a-z0-9-_]+)\/(?P<repo1>[a-z0-9-_]+))?"
     r"#|https:\/\/github\.com\/"
     r"(?P<owner2>[a-z0-9-_]+)\/(?P<repo2>[a-z0-9-_]+)\/issues\/)(?P<number>\d+)",

@@ -10,17 +10,6 @@ import urllib.request
 
 MAX_COMMIT_CHARS = 72
 SUBJECT_REGEX = re.compile(r"^[\S].*[\S]: [\S].*[\S]$")
-# URL regex taken from
-# https://stackoverflow.com/questions/7160737/python-how-to-validate-a-url-in-python-malformed-or-not
-URL_REGEX = re.compile(
-    r"^(?:http|ftp)s?://"  # http:// or https://
-    r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # domain
-    r"localhost|"  # localhost
-    r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # or ip
-    r"(?::\d+)?"  # optional port
-    r"(?:/?|[/?]\S+)$",
-    re.IGNORECASE,
-)
 LINKED_ISSUES_REGEX = re.compile(
     r"(?:(?:close|resolve)[sd]?|fix|fixe[sd]|for)\s+"
     r"(?:(?:(?P<owner1>[a-z0-9-_]+)\/(?P<repo1>[a-z0-9-_]+))?"
@@ -289,9 +278,7 @@ class CommitLinter:
             )
 
         if len(subject) > MAX_COMMIT_CHARS:
-            raise RuntimeError(
-                f"Commit title is longer than maximum length of {MAX_COMMIT_CHARS} characters."
-            )
+            raise RuntimeError(f"Commit title is longer than maximum length of {MAX_COMMIT_CHARS} characters.")
 
         if not cls._is_only_ascii_character(subject):
             raise RuntimeError("Subject has non-ASCII characters.")
@@ -301,26 +288,13 @@ class CommitLinter:
         if not body:
             return
 
-        if not body.endswith(".") and not cls._is_ending_with_url(body):
-            raise RuntimeError("Body doesn't end with a period.")
+        if not cls._is_only_ascii_character(body):
+            raise RuntimeError("Body has non-ASCII characters.")
 
-        for line in body.split("\n"):
-            if len(line) > MAX_COMMIT_CHARS and not cls._is_ending_with_url(line):
-                raise RuntimeError(
-                    f"Body line is longer than maximum length of {MAX_COMMIT_CHARS} characters."
-                )
-
-            if not cls._is_only_ascii_character(line):
-                raise RuntimeError("Body has non-ASCII character.")
 
     @staticmethod
-    def _is_only_ascii_character(line: str) -> bool:
-        return all(ord(character) < 128 for character in line)
-
-    @staticmethod
-    def _is_ending_with_url(line: str) -> bool:
-        last_element = line.split(" ")[-1]
-        return bool(re.match(URL_REGEX, last_element))
+    def _is_only_ascii_character(string: str) -> bool:
+        return all(ord(char) < 128 for char in string)
 
 
 def validate_linked_issues(pull_request: PullRequest, github_client: GithubClient) -> None:

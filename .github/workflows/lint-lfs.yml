@@ -1,0 +1,12 @@
+name: Joyned Git LFS Linter
+
+on:
+  workflow_call:
+
+jobs:
+  lint-lfs:
+    name: Lint LFS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lint LFS
+        run: git lfs fsck --pointers

@@ -8,5 +8,6 @@ jobs:
     name: Lint LFS
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Lint LFS
         run: git lfs fsck --pointers

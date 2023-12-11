@@ -1,0 +1,119 @@
+name: 'Lint Git History'
+
+on:
+  workflow_call:
+    inputs:
+
+      min-behind:
+        type: number
+        description: |
+          `n = 0` - `HEAD` may be behind.
+          `n = 1` - `HEAD` must be behind.
+          `n ≥ 2` - `HEAD` must be behind by at least `n` commits.
+
+      max-behind:
+        type: number
+        description: |
+          `n = 0` - `HEAD` cannot be behind
+          `n = 1` - `HEAD` may be behind by a single commit.
+          `n ≥ 2` - `HEAD` may be behind by up to `n` commits.
+
+
+      min-ahead:
+        type: number
+        description: |
+          `n = 0` - `HEAD` may be ahead.
+          `n = 1` - `HEAD` must be ahead.
+          `n ≥ 2` - `HEAD` must be ahead by at least `n` commits.
+
+      max-ahead:
+        type: number
+        description: |
+          `n = 0` - `HEAD` cannot be ahead.
+          `n = 1` - `HEAD` may be ahead by a single commit.
+          `n ≥ 2` - `HEAD` may be ahead by up to `n` commits.
+
+
+      min-parents:
+        type: number
+        description: |
+          `n = 0` - `HEAD` branch commits may have parents.
+          `n = 1` - `HEAD` branch commits must have a parent.
+          `n = 2` - `HEAD` branch commits must be merge commits.
+          `n = 3` - `HEAD` branch commits must be octopus commits.
+          `n ≥ 3` - `HEAD` branch commits cannot have less than `n` parents.
+
+      max-parents:
+        type: number
+        description: |
+          `n = 0` - `HEAD` branch commits cannot have parents.
+          `n = 1` - `HEAD` branch commits may have a parent.
+          `n = 2` - `HEAD` branch commits may be merge commits.
+          `n = 3` - `HEAD` branch commits may be octopus commits.
+          `n ≥ 3` - `HEAD` branch commits cannot have more than `n` parents.
+
+jobs:
+  lint-git-history:
+    name: Lint git history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+
+      - id: 'count-commits-behind'
+        name: 'Count commits behind'
+        if: ${{inputs.min-behind || inputs.max-behind}}
+        run: echo "COUNT_BEHIND=$(git rev-list --count HEAD..develop)" >> "${GITHUB_OUTPUT}"
+
+      - id: 'log-commits-behind'
+        name: 'Log commits behind'
+        if: ${{inputs.min-behind || inputs.max-behind}}
+        run: |
+          echo "Found ${{steps.count-commits-behind.outputs.COUNT_BEHIND}} commits:"
+          git log --oneline --parents --graph HEAD..develop
+
+
+      - id: 'assert-min-behind'
+        name: 'Assert minimum behind (by ${{inputs.min-behind}} commits)'
+        if: ${{inputs.min-behind}}
+        run: test '${{steps.count-commits-behind.outputs.COUNT_BEHIND}}' -ge '${{inputs.min-behind}}'
+
+      - id: 'assert-max-behind'
+        name: 'Assert maximum behind (by ${{inputs.max-behind}} commits)'
+        if: ${{inputs.max-behind}}
+        run: test '${{steps.count-commits-behind.outputs.COUNT_BEHIND}}' -le ${{inputs.max-behind}}
+
+
+      - id: 'count-commits-ahead'
+        name: 'Count commits ahead'
+        if: ${{inputs.min-ahead || inputs.max-ahead || inputs.min-parents || inputs.max-parents}}
+        run: echo "COUNT_AHEAD=$(git rev-list --count develop..HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - id: 'log-commits-ahead'
+        name: 'Log commits ahead'
+        if: ${{inputs.min-ahead || inputs.max-ahead || inputs.min-parents || inputs.max-parents}}
+        run: |
+          echo "Found ${{steps.count-commits-ahead.outputs.COUNT_AHEAD}} commits:"
+          git log --oneline --parents --graph develop..HEAD
+
+
+      - id: 'assert-min-ahead'
+        name: 'Assert minimum ahead (by ${{inputs.min-ahead}} commits)'
+        if: ${{inputs.min-ahead}}
+        run: test '${{steps.count-commits-ahead.outputs.COUNT_AHEAD}}' -ge '${{inputs.min-ahead}}'
+
+      - if: ${{inputs.max-ahead}}
+        id: 'assert-max-ahead'
+        name: 'Assert maximum ahead (by ${{inputs.max-ahead}} commits)'
+        run: test '${{steps.count-commits-ahead.outputs.COUNT_AHEAD}}' -le '${{inputs.max-ahead}}'
+
+
+      - id: 'assert-min-parents'
+        name: 'Assert minimum parents (is ${{inputs.min-parents}} for all commits)'
+        if: ${{inputs.min-parents > 0}}
+        run: test "$(git rev-list --count --max-parents="$((${{inputs.min-parents}} - 1))" develop..HEAD)" -gt '0'
+
+      - id: 'assert-max-parents'
+        name: 'Assert maximum parents (is ${{inputs.max-parents}} for all commits)'
+        if: ${{inputs.max-parents}}
+        run: test "$(git rev-list --count --min-parents="$((${{inputs.max-parents}} + 1))" develop..HEAD)" -gt '0'

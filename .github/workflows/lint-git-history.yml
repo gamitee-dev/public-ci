@@ -52,68 +52,115 @@ on:
           `n = 3` - `HEAD` branch commits may be octopus commits.
           `n ≥ 3` - `HEAD` branch commits cannot have more than `n` parents.
 
+env:
+  FORWARD_RANGE: "${{github.base_ref}}..${{github.head_ref}} -- ."
+  BACKWARD_RANGE: "${{github.head_ref}}..${{github.base_ref}} -- ."
+
 jobs:
-  lint-git-history:
-    name: Lint git history
+
+  lint-commit-count-behind:
+    if: ${{github.event.pull_request && (inputs.min-behind >= 0 || inputs.max-behind >= 0)}}
+    name: Lint commit count behind (${{github.head_ref}}..${{github.base_ref}})
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 10 # //TODO ...
 
       - id: 'count-commits-behind'
         name: 'Count commits behind'
-        if: ${{inputs.min-behind || inputs.max-behind}}
-        run: echo "COUNT_BEHIND=$(git rev-list --count HEAD..develop)" >> "${GITHUB_OUTPUT}"
+        run: |
+          COUNT="$(git rev-list --count ${{env.BACKWARD_RANGE}})"
+          echo "COUNT=${COUNT}" >> "${GITHUB_OUTPUT}"
 
       - id: 'log-commits-behind'
-        name: 'Log commits behind'
-        if: ${{inputs.min-behind || inputs.max-behind}}
-        run: |
-          echo "Found ${{steps.count-commits-behind.outputs.COUNT_BEHIND}} commits:"
-          git log --oneline --parents --graph HEAD..develop
+        name: Found ${{steps.count-commits-behind.outputs.COUNT}} commits behind
+        run: git log --oneline --parents --graph ${{env.BACKWARD_RANGE}}
 
+      - if: ${{inputs.min-behind > 0}}
+        id: 'assert-min-behind'
+        name: 'Assert min behind by ${{inputs.min-behind}} commits'
+        run: (( ${{steps.count-commits-behind.outputs.COUNT}} >= ${{inputs.min-behind}} ))
 
-      - id: 'assert-min-behind'
-        name: 'Assert minimum behind (by ${{inputs.min-behind}} commits)'
-        if: ${{inputs.min-behind}}
-        run: test '${{steps.count-commits-behind.outputs.COUNT_BEHIND}}' -ge '${{inputs.min-behind}}'
+      - if: ${{inputs.max-behind >= 0}}
+        id: 'assert-max-behind'
+        name: 'Assert max behind by ${{inputs.max-behind}} commits'
+        run: (( ${{steps.count-commits-behind.outputs.COUNT}} <= ${{inputs.max-behind}} ))
 
-      - id: 'assert-max-behind'
-        name: 'Assert maximum behind (by ${{inputs.max-behind}} commits)'
-        if: ${{inputs.max-behind}}
-        run: test '${{steps.count-commits-behind.outputs.COUNT_BEHIND}}' -le ${{inputs.max-behind}}
+  lint-commit-count-ahead:
+    if: ${{github.event.pull_request && (inputs.min-ahead >= 0 || inputs.max-ahead >= 0)}}
+    name: Lint commit count ahead (${{github.base_ref}}..${{github.head_ref}})
+    runs-on: ubuntu-latest
 
+    steps:
+      - uses: actions/checkout@v4
 
       - id: 'count-commits-ahead'
         name: 'Count commits ahead'
-        if: ${{inputs.min-ahead || inputs.max-ahead || inputs.min-parents || inputs.max-parents}}
-        run: echo "COUNT_AHEAD=$(git rev-list --count develop..HEAD)" >> "${GITHUB_OUTPUT}"
+        run: |
+          COUNT="$(git rev-list --count ${{env.FORWARD_RANGE}})"
+          echo "COUNT=${COUNT}" >> "${GITHUB_OUTPUT}"
 
       - id: 'log-commits-ahead'
-        name: 'Log commits ahead'
-        if: ${{inputs.min-ahead || inputs.max-ahead || inputs.min-parents || inputs.max-parents}}
-        run: |
-          echo "Found ${{steps.count-commits-ahead.outputs.COUNT_AHEAD}} commits:"
-          git log --oneline --parents --graph develop..HEAD
+        name: 'Found ${{steps.count-commits-ahead.outputs.COUNT}} commits ahead'
+        run: git log --oneline --parents --graph ${{env.FORWARD_RANGE}}
 
+      - if: ${{inputs.min-ahead > 0}}
+        id: 'assert-min-ahead'
+        name: 'Assert min ahead by ${{inputs.min-ahead}} commits)'
+        run: (( ${{steps.count-commits-ahead.outputs.COUNT}} >= ${{inputs.min-ahead}} ))
 
-      - id: 'assert-min-ahead'
-        name: 'Assert minimum ahead (by ${{inputs.min-ahead}} commits)'
-        if: ${{inputs.min-ahead}}
-        run: test '${{steps.count-commits-ahead.outputs.COUNT_AHEAD}}' -ge '${{inputs.min-ahead}}'
-
-      - if: ${{inputs.max-ahead}}
+      - if: ${{inputs.max-ahead >= 0}}
         id: 'assert-max-ahead'
-        name: 'Assert maximum ahead (by ${{inputs.max-ahead}} commits)'
-        run: test '${{steps.count-commits-ahead.outputs.COUNT_AHEAD}}' -le '${{inputs.max-ahead}}'
+        name: 'Assert max ahead by ${{inputs.max-ahead}} commits'
+        run: (( ${{steps.count-commits-ahead.outputs.COUNT}} <= ${{inputs.max-ahead}} ))
 
+  lint-min-parents:
+    # Note: Cannot run when `= 0` due to subtraction
+    if: ${{github.event.pull_request && inputs.min-parents > 0}}
+    name: 'Lint min of ${{inputs.min-parents}} parents for commits of ${{github.head_ref}}'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
 
+      - id: 'count-invalid-min-parents'
+        name: 'Count invalid min parents'
+        run: |
+          MAX="$(( ${{inputs.min-parents}} - 1 ))"
+          echo "MAX=${MAX}" >> "${GITHUB_OUTPUT}"
+          COUNT="$(git rev-list --count --max-parents="${MAX}" ${{env.FORWARD_RANGE}})"
+          echo "COUNT=${COUNT}" >> "${GITHUB_OUTPUT}"
+
+      - id: 'log-invalid-min-parents'
+        name: 'Found ${{steps.count-invalid-min-parents.outputs.COUNT}} commits with less than ${{inputs.min-parents}} parents'
+        run: git log --oneline --parents --graph --max-parents="${{steps.count-invalid-min-parents.outputs.MAX}}" ${{env.FORWARD_RANGE}}
+  
       - id: 'assert-min-parents'
-        name: 'Assert minimum parents (is ${{inputs.min-parents}} for all commits)'
-        if: ${{inputs.min-parents > 0}}
-        run: test "$(git rev-list --count --max-parents="$((${{inputs.min-parents}} - 1))" develop..HEAD)" -gt '0'
+        name: 'Assert no less then ${{inputs.min-parents}} parent (for all commits)'
+        run: (( ${{steps.count-invalid-min-parents.outputs.COUNT}} == 0 ))
 
+  lint-max-parents:
+    if: ${{github.event.pull_request && inputs.max-parents >= 0}}
+    name: 'Lint max of ${{inputs.max-parents}} parents for commits of ${{github.head_ref}}'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: 'count-invalid-max-parents'
+        name: 'Count invalid max parents'
+        run: |
+          MIN="$(( ${{inputs.max-parents}} + 1 ))"
+          echo "MIN=${MIN}" >> "${GITHUB_OUTPUT}"
+          COUNT="$(git rev-list --count --min-parents="${MIN}" ${{env.FORWARD_RANGE}})"
+          echo "COUNT=${COUNT}" >> "${GITHUB_OUTPUT}"
+
+      - id: 'log-invalid-max-parents'
+        name: 'Found ${{steps.count-invalid-max-parents.outputs.COUNT}} commits with more than ${{inputs.max-parents}} parents'
+        run: git log --oneline --parents --graph --min-parents="${{steps.count-invalid-max-parents.outputs.MIN}}" ${{env.FORWARD_RANGE}}
+  
       - id: 'assert-max-parents'
-        name: 'Assert maximum parents (is ${{inputs.max-parents}} for all commits)'
-        if: ${{inputs.max-parents}}
-        run: test "$(git rev-list --count --min-parents="$((${{inputs.max-parents}} + 1))" develop..HEAD)" -gt '0'
+        name: 'Assert no more than ${{inputs.min-parents}} parents (for all commits)'
+        run: (( ${{steps.count-invalid-max-parents.outputs.COUNT}} == 0 ))

@@ -28,11 +28,11 @@ jobs:
           python-version: 3.8
       - name: Download code
         run: |
-          wget https://raw.githubusercontent.com/gamitee-dev/public-ci/master/code/commit_linter.py
+          wget https://raw.githubusercontent.com/${{ github.repository }}/master/code/commit_linter.py
       - name: Get Commits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Getting PR details"
-          gh pr view https://github.com/${{ github.event.repository.full_name }}/pull/${{ github.event.number }} --json commits,title,baseRefName,headRefName,url,body > commit_details.json
+          gh pr view ${{ github.server_url }}/${{ github.event.repository.full_name }}/pull/${{ github.event.number }} --json commits,title,baseRefName,headRefName,url,body > commit_details.json
           cat commit_details.json | python commit_linter.py --token $GITHUB_TOKEN ${{ inputs.onlyMaster && '--only_master' || '' }}

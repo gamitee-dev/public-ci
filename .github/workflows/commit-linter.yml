@@ -22,17 +22,20 @@ jobs:
       issues: read
     if: ${{ github.event_name == 'pull_request' }}
     steps:
+
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
+
       - name: Download code
-        run: |
-          wget https://raw.githubusercontent.com/${{ github.repository }}/master/code/commit_linter.py
-      - name: Get Commits
+        run: wget https://raw.githubusercontent.com/${{github.repository_owner}}/public-ci/master/code/commit_linter.py
+
+      - name: Get PR details
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Getting PR details"
-          gh pr view ${{ github.server_url }}/${{ github.event.repository.full_name }}/pull/${{ github.event.number }} --json commits,title,baseRefName,headRefName,url,body > commit_details.json
-          cat commit_details.json | python commit_linter.py --token $GITHUB_TOKEN ${{ inputs.onlyMaster && '--only_master' || '' }}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}} # Required for gh cli
+          JOYNED_PR_URL: ${{github.server_url}}/${{github.repository}}/pull/${{github.event.number}}
+        run: gh pr view ${{env.JOYNED_PR_URL}} --json commits,title,baseRefName,headRefName,url,body > commit_details.json
+
+      - name: Lint commits
+        run: cat commit_details.json | python commit_linter.py --token ${{secrets.GITHUB_TOKEN}} ${{inputs.onlyMaster && '--only_master' || ''}}

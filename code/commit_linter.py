@@ -58,11 +58,11 @@ def request(
     )
 
     try:
-        with urllib.request.urlopen(httprequest) as httpresponse:
+        with urllib.request.urlopen(httprequest) as http_response:
             return HttpResponse(
-                headers=dict(httpresponse.headers),
-                status=httpresponse.status,
-                body=httpresponse.read().decode(httpresponse.headers.get_content_charset("utf-8")),
+                headers=dict(http_response.headers),
+                status=http_response.status,
+                body=http_response.read().decode(http_response.headers.get_content_charset("utf-8")),
             )
     except urllib.error.HTTPError as error:
         return HttpResponse(
@@ -225,10 +225,9 @@ class CommitLinter:
             author.email.lower().endswith("@joyned.co")
             or author.email.lower().endswith("@gamitee.com")
             or author.login == "gamitee-bot"
-            or author.login == "tomerle"
             for author in commit.authors
         ):
-            raise RuntimeError("Author has non Joyned email address, and is not tomerle. ;)")
+            raise RuntimeError("Author has non Joyned email address.")
 
         cls._validate_subject(commit.subject)
 
@@ -276,7 +275,6 @@ class CommitLinter:
                 "Commit title must be of the format 'Subject: A short title' "
                 "(same as pull requests)."
             )
-
         if len(subject) > MAX_COMMIT_CHARS:
             raise RuntimeError(f"Commit title is longer than maximum length of {MAX_COMMIT_CHARS} characters.")
 
